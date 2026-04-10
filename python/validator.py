@@ -60,7 +60,7 @@ def log_accepted(device_id, reading_count, record_uuid):
     }))
 
 
-# ================================================================
+
 #  FEATURE 1 — SCHEMA VALIDATION WITH PYDANTIC
 #  Defines exactly what a valid payload looks like
 #  Wrong type, missing field, out of range → auto rejected
@@ -148,15 +148,6 @@ def assign_uuid(payload):
 
 # ================================================================
 #  FEATURE 2 — HMAC HASH VERIFICATION
-#  THIS IS WHERE HASH IS VERIFIED IN PYTHON
-#
-#  ESP32 computed: HMAC(payload, secret_key) = hash_A
-#  Python computes: HMAC(payload, secret_key) = hash_B
-#  If hash_A == hash_B → data is authentic ✅
-#  If hash_A != hash_B → data was tampered ❌
-#
-#  compare_digest prevents timing attacks
-# ================================================================
 def verify_hmac(payload_str, received_hmac):
     # Python recomputes the same hash using same secret key
     expected = hmac.new(
