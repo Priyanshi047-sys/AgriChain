@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AgriChain Dashboard</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:system-ui,sans-serif;background:#fff;color:#111;padding:1.5rem;}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding-bottom:1rem;border-bottom:1px solid #e5e5e5;margin-bottom:1.5rem;}
+.title{font-size:16px;font-weight:500;}
+.lang-toggle{display:flex;border:1px solid #ddd;border-radius:6px;overflow:hidden;}
+.lang-btn{padding:5px 14px;font-size:13px;cursor:pointer;background:#fff;border:none;color:#666;}
+.lang-btn.active{background:#f0f0f0;color:#111;font-weight:500;}
+.row{display:flex;gap:10px;margin-bottom:1.2rem;align-items:flex-end;}
+label{font-size:12px;color:#888;display:block;margin-bottom:4px;}
+input,select{width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:14px;}
+.field{flex:1;}
+.btn{padding:9px 20px;background:#111;color:#fff;border:none;border-radius:6px;font-size:14px;cursor:pointer;}
+hr{border:none;border-top:1px solid #e5e5e5;margin:1.2rem 0;}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem;}
+.stat{border:1px solid #e5e5e5;border-radius:8px;padding:12px 14px;}
+.stat-label{font-size:11px;color:#888;margin-bottom:4px;}
+.stat-value{font-size:22px;font-weight:500;}
+.stat-unit{font-size:11px;color:#aaa;margin-top:2px;}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{text-align:left;padding:8px 10px;font-size:11px;color:#888;font-weight:500;border-bottom:1px solid #e5e5e5;text-transform:uppercase;letter-spacing:0.04em;}
+tbody td{padding:10px;border-bottom:1px solid #f2f2f2;color:#333;}
+tbody tr:last-child td{border-bottom:none;}
+.pill{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:500;}
+.pill-green{background:#e8f5e9;color:#2e7d32;}
+.pill-amber{background:#fff8e1;color:#f57f17;}
+.pill-red{background:#fce4ec;color:#b71c1c;}
+.mono{font-family:monospace;font-size:11px;color:#aaa;}
+.empty{text-align:center;padding:2.5rem;color:#bbb;font-size:14px;}
+.section-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.section-title{font-size:13px;font-weight:500;}
+.count{font-size:12px;color:#888;}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="title" id="t_title">AgriChain — Sensor Data</div>
+  <div class="lang-toggle">
+    <button class="lang-btn active" onclick="setLang('en')">English</button>
+    <button class="lang-btn" onclick="setLang('hi')">हिंदी</button>
+  </div>
+</div>
+<div class="row">
+  <div class="field"><label id="t_devicelbl">Device ID</label><input id="deviceInput" placeholder="e.g. AGRI_001"/></div>
+  <div class="field"><label id="t_datelbl">Date Range</label>
+    <select id="dateRange">
+      <option value="1" id="o_today">Today</option>
+      <option value="7" id="o_7">Last 7 Days</option>
+      <option value="30" id="o_30">Last 30 Days</option>
+      <option value="0" id="o_all">All Records</option>
+    </select>
+  </div>
+  <div><label style="visibility:hidden">.</label><button class="btn" onclick="fetchData()" id="t_search">Search</button></div>
+</div>
+<div id="resultsArea" style="display:none">
+  <hr>
+  <div class="stats">
+    <div class="stat"><div class="stat-label" id="t_lbl_total">Total Readings</div><div class="stat-value" id="v_total">—</div><div class="stat-unit" id="t_onchain">on blockchain</div></div>
+    <div class="stat"><div class="stat-label" id="t_lbl_temp">Temperature</div><div class="stat-value" id="v_temp">—</div><div class="stat-unit">°C</div></div>
+    <div class="stat"><div class="stat-label" id="t_lbl_soil">Soil Moisture</div><div class="stat-value" id="v_soil">—</div><div class="stat-unit">%</div></div>
+    <div class="stat"><div class="stat-label" id="t_lbl_battery">Battery</div><div class="stat-value" id="v_battery">—</div><div class="stat-unit">%</div></div>
+  </div>
+  <div class="section-head">
+    <div class="section-title" id="t_history">Reading History</div>
+    <div class="count" id="t_showing"></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th id="t_col_date">Date & Time</th>
+      <th id="t_col_temp">Temp (°C)</th>
+      <th id="t_col_soil">Soil (%)</th>
+      <th id="t_col_raw">Raw ADC</th>
+      <th id="t_col_battery">Battery</th>
+      <th id="t_col_status">Status</th>
+      <th id="t_col_schema">Schema</th>
+      <th id="t_col_tx">Tx ID</th>
+    </tr></thead>
+    <tbody id="tableBody"><tr><td colspan="8" class="empty" id="t_empty">No data. Enter a Device ID and search.</td></tr></tbody>
+  </table>
+</div>
+<div id="emptyState" class="empty" style="padding:3rem" id="t_welcome">Enter a Device ID above to fetch data from the blockchain.</div>
+<script>
+const API_URL='http://localhost:3000';
+const API_KEY='e0b7a4f5da42be17137fc00ade11ea888885b32f08a2107a17a6bc5475e9ef64';
+const L={
+  en:{title:'AgriChain — Sensor Data',devicelbl:'Device ID',datelbl:'Date Range',search:'Search',lbl_total:'Total Readings',onchain:'on blockchain',lbl_temp:'Temperature',lbl_soil:'Soil Moisture',lbl_battery:'Battery',history:'Reading History',showing:'Showing',records:'records',col_date:'Date & Time',col_temp:'Temp (°C)',col_soil:'Soil (%)',col_raw:'Raw ADC',col_battery:'Battery',col_status:'Status',col_schema:'Schema',col_tx:'Tx ID',empty:'No data. Enter a Device ID and search.',welcome:'Enter a Device ID above to fetch data from the blockchain.',today:'Today',d7:'Last 7 Days',d30:'Last 30 Days',dall:'All Records',dry:'Dry',moderate:'Moderate',wet:'Wet'},
+  hi:{title:'AgriChain — सेंसर डेटा',devicelbl:'डिवाइस ID',datelbl:'तारीख की सीमा',search:'खोजें',lbl_total:'कुल रीडिंग',onchain:'ब्लॉकचेन पर',lbl_temp:'तापमान',lbl_soil:'मिट्टी की नमी',lbl_battery:'बैटरी',history:'रीडिंग इतिहास',showing:'दिखाया जा रहा है',records:'रिकॉर्ड',col_date:'दिनांक और समय',col_temp:'तापमान (°C)',col_soil:'मिट्टी (%)',col_raw:'Raw ADC',col_battery:'बैटरी',col_status:'स्थिति',col_schema:'स्कीमा',col_tx:'Tx ID',empty:'कोई डेटा नहीं।',welcome:'ब्लॉकचेन से डेटा लाने के लिए ऊपर Device ID दर्ज करें।',today:'आज',d7:'पिछले 7 दिन',d30:'पिछले 30 दिन',dall:'सभी रिकॉर्ड',dry:'सूखा',moderate:'सामान्य',wet:'नम'}
+};
+let lang='en',allData=[];
+function setLang(l){lang=l;document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===(l==='en'?'English':'हिंदी')));const t=L[l];['title','devicelbl','datelbl','search','lbl_total','onchain','lbl_temp','lbl_soil','lbl_battery','history','col_date','col_temp','col_soil','col_raw','col_battery','col_status','col_schema','col_tx','empty','welcome'].forEach(id=>{const el=document.getElementById('t_'+id);if(el)el.textContent=t[id];});document.getElementById('o_today').textContent=t.today;document.getElementById('o_7').textContent=t.d7;document.getElementById('o_30').textContent=t.d30;document.getElementById('o_all').textContent=t.dall;if(allData.length)renderTable(filterData());}
+function filterData(){const days=parseInt(document.getElementById('dateRange').value);if(!days)return allData;const cutoff=Date.now()-days*86400000;return allData.filter(r=>new Date(r.ts).getTime()>cutoff);}
+function soilStatus(pct){const t=L[lang];if(pct<20)return[t.dry,'pill-red'];if(pct<60)return[t.moderate,'pill-amber'];return[t.wet,'pill-green'];}
+function renderTable(rows){const tbody=document.getElementById('tableBody');const t=L[lang];document.getElementById('t_showing').textContent=rows.length+' '+t.records;if(!rows.length){tbody.innerHTML=`<tr><td colspan="8" class="empty">${t.empty}</td></tr>`;return;}tbody.innerHTML=rows.map(r=>{const temp=r.temperature??r.temp??'—';const soil=r.soil_percent??r.soil??'—';const raw=r.soil_raw??'—';const bat=r.battery_level!=null?r.battery_level+'%':'—';const ts=new Date(r.ts).toLocaleString(lang==='hi'?'hi-IN':'en-IN',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});const schema=r.schema_version??'—';const tx=r.record_uuid?r.record_uuid.substring(0,10)+'...':'—';const[slabel,sclass]=soilStatus(typeof soil==='number'?soil:0);return`<tr><td>${ts}</td><td>${typeof temp==='number'?temp.toFixed(1):temp}</td><td>${soil}</td><td>${raw}</td><td>${bat}</td><td><span class="pill ${sclass}">${slabel}</span></td><td>${schema}</td><td class="mono">${tx}</td></tr>`;}).join('');}
+function updateStats(){if(!allData.length)return;const l=allData[0];document.getElementById('v_total').textContent=allData.length;document.getElementById('v_temp').textContent=(l.temperature??l.temp??0).toFixed(1);document.getElementById('v_soil').textContent=l.soil_percent??l.soil??'—';document.getElementById('v_battery').textContent=l.battery_level??'—';}
+async function fetchData(){const id=document.getElementById('deviceInput').value.trim();if(!id)return;document.getElementById('emptyState').style.display='none';document.getElementById('resultsArea').style.display='block';try{const res=await fetch(`${API_URL}/api/history/${id}`,{headers:{'x-api-key':API_KEY}});const data=await res.json();allData=Array.isArray(data)?data.map(d=>d.record||d):[data];}catch(e){allData=[];}updateStats();renderTable(filterData());}
+</script>
+</body>
+</html>

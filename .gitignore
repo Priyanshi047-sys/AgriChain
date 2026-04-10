@@ -1,0 +1,22 @@
+# Secrets and Credentials
+.env
+wallet/
+connection.json
+EnrollAdmin.js
+registerUser.js
+
+# Dependencies
+node_modules/
+vendor/
+.pio/
+.vscode/
+
+# Python artifacts
+__pycache__/
+*.pyc
+venv/
+
+# Logs and OS files
+logs/
+*.log
+.DS_Store
